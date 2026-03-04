@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 //! Two distinct types model the two sides of the scheduling pipeline:
 //!
 //! ```text
-//! Piccolo  ──(proto TaskInfo)──►  Task  ──(scheduler)──►  SchedTask  ──(gRPC)──►  Timpani-N
+//! Pullpiri  ──(proto TaskInfo)──►  Task  ──(scheduler)──►  SchedTask  ──(gRPC)──►  Timpani-N
 //!                                  ↑ input                    ↑ output
 //!                                  mutable working copy        wire-ready, ns units
 //! ```
@@ -53,7 +53,7 @@ impl SchedPolicy {
         }
     }
 
-    /// Parse from the proto integer value sent by Piccolo.
+    /// Parse from the proto integer value sent by Pullpiri.
     ///
     /// Unknown values are silently mapped to `Normal`, matching the C++ default.
     pub fn from_proto_int(v: i32) -> Self {
@@ -76,12 +76,13 @@ impl SchedPolicy {
 ///
 /// Replaces the C++ dual representation (`std::string affinity` + `int
 /// cpu_affinity`) with a single typed value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CpuAffinity {
     /// No constraint – the scheduler may assign any available CPU.
     ///
     /// Corresponds to `cpu_affinity == 0` or `cpu_affinity == 0xFFFF_FFFF_FFFF_FFFF`
     /// in the proto.
+    #[default]
     Any,
 
     /// Pinned to a specific set of CPUs expressed as a bitmask.
@@ -123,12 +124,6 @@ impl CpuAffinity {
                 }
             }
         }
-    }
-}
-
-impl Default for CpuAffinity {
-    fn default() -> Self {
-        CpuAffinity::Any
     }
 }
 
@@ -179,7 +174,7 @@ pub struct Task {
     /// Memory budget for this task in megabytes.
     ///
     /// Checked against `NodeConfig::max_memory_mb` during admission control.
-    /// A value of `0` means "no constraint" — used when Piccolo does not yet
+    /// A value of `0` means "no constraint" — used when Pullpiri does not yet
     /// populate this field (the proto `TaskInfo` does not carry it yet).
     /// This is **dormant** until the proto is extended; the field exists now so
     /// the pipeline is ready without a breaking change later.
@@ -199,7 +194,7 @@ pub struct Task {
     pub release_time_us: u32,
 
     /// Maximum number of consecutive deadline misses allowed before a fault is
-    /// reported to Piccolo.
+    /// reported to Pullpiri.
     pub max_dmiss: i32,
 
     // ── Assignment (filled by GlobalScheduler) ────────────────────────────────

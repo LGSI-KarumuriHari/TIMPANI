@@ -25,15 +25,15 @@ use timpani_o::config::NodeConfigManager;
     long_about = None,
 )]
 struct Cli {
-    /// Port for the upstream SchedInfoService gRPC server (receives workloads from Piccolo).
+    /// Port for the upstream SchedInfoService gRPC server (receives workloads from Pullpiri).
     #[arg(short = 's', long = "sinfoport", default_value_t = 50052)]
     sinfo_port: u16,
 
-    /// FaultService host address (Piccolo gRPC endpoint).
+    /// FaultService host address (Pullpiri gRPC endpoint).
     #[arg(short = 'f', long = "faulthost", default_value = "localhost")]
     fault_host: String,
 
-    /// Port for the FaultService gRPC client (Piccolo endpoint).
+    /// Port for the FaultService gRPC client (Pullpiri endpoint).
     #[arg(short = 'p', long = "faultport", default_value_t = 50053)]
     fault_port: u16,
 

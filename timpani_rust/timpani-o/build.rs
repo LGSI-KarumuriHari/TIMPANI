@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 /// must be set in the `PROTOC` environment variable before running `cargo build`.
 /// Install on Ubuntu/Debian: `sudo apt install -y protobuf-compiler`
 /// Install on macOS:          `brew install protobuf`
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Path to the proto source relative to this crate's root
     // (rust/timpani-o/ → ../../timpani-o/proto/)

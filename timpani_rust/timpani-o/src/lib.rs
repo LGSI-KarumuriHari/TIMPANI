@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 //! ```text
 //! lib.rs
 //! ├── proto/          – generated gRPC/protobuf types & stubs
-//! ├── config/         – YAML node configuration (Week 1)
-//! ├── scheduler/      – three scheduling algorithms  (Week 1)
-//! ├── hyperperiod/    – LCM / GCD helpers            (Week 1)
-//! ├── grpc/           – gRPC server + client wiring  (Week 2)
-//! └── fault/          – fault reporting to Piccolo   (Week 2)
+//! ├── config/         – YAML node configuration
+//! ├── scheduler/      – three scheduling algorithms
+//! ├── hyperperiod/    – LCM / GCD helpers
+//! ├── grpc/           – gRPC server + client wiring  (pending)
+//! └── fault/          – fault reporting to Pullpiri  (pending)
 //! ```
 
 pub mod config;

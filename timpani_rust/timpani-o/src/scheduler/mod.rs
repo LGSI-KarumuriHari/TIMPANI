@@ -160,7 +160,7 @@ impl GlobalScheduler {
 
     fn schedule_target_node_priority(
         &self,
-        tasks: &mut Vec<Task>,
+        tasks: &mut [Task],
         avail: &AvailCpus,
         util: &mut CpuUtil,
     ) -> Result<(), SchedulerError> {
@@ -231,7 +231,7 @@ impl GlobalScheduler {
 
     fn schedule_least_loaded(
         &self,
-        tasks: &mut Vec<Task>,
+        tasks: &mut [Task],
         avail: &AvailCpus,
         util: &mut CpuUtil,
     ) -> Result<(), SchedulerError> {
@@ -319,7 +319,7 @@ impl GlobalScheduler {
 
     fn schedule_best_fit_decreasing(
         &self,
-        tasks: &mut Vec<Task>,
+        tasks: &mut [Task],
         avail: &AvailCpus,
         util: &mut CpuUtil,
     ) -> Result<(), SchedulerError> {
@@ -462,7 +462,7 @@ impl GlobalScheduler {
 
         // 3. Pinned CPU affinity must be in this node's CPU set
         if let CpuAffinity::Pinned(mask) = task.affinity {
-            let required_cpu = mask.trailing_zeros() as u32;
+            let required_cpu = mask.trailing_zeros();
             let node_cpus = avail.get(node_id).map(|v| v.as_slice()).unwrap_or(&[]);
             if !node_cpus.contains(&required_cpu) {
                 return Err(AdmissionReason::CpuAffinityUnavailable {
@@ -500,7 +500,7 @@ impl GlobalScheduler {
 
         // Try pinned CPU first
         if let CpuAffinity::Pinned(mask) = task.affinity {
-            let pinned = mask.trailing_zeros() as u32;
+            let pinned = mask.trailing_zeros();
             if cpus.contains(&pinned) {
                 let current = Self::calculate_cpu_utilization(util, node_id, pinned);
                 if current + task_util <= CPU_UTILIZATION_THRESHOLD {
@@ -677,7 +677,7 @@ impl GlobalScheduler {
         }
 
         for (node_id, node_tasks) in &by_node {
-            let refs: Vec<&Task> = node_tasks.iter().copied().collect();
+            let refs: Vec<&Task> = node_tasks.to_vec();
             if let Some(total_u) = check_liu_layland(&refs) {
                 warn!(
                     node       = %node_id,
