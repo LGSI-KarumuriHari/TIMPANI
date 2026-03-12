@@ -7,29 +7,86 @@ use crate::error::{TimpaniError, TimpaniResult};
 use clap::Parser;
 use tracing::info;
 
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/// Log level constants
+pub mod log_level {
+    pub const SILENT: u8 = 0;
+    pub const ERROR: u8 = 1;
+    pub const WARNING: u8 = 2;
+    pub const INFO: u8 = 3;
+    pub const DEBUG: u8 = 4;
+    pub const VERBOSE: u8 = 5;
+}
+
+/// Default configuration constants
+pub mod defaults {
+    pub const CPU_NO_AFFINITY: i32 = -1;
+    pub const PRIORITY_DEFAULT: i32 = -1;
+    pub const PORT: u16 = 7777;
+    pub const ADDRESS: &str = "127.0.0.1";
+    pub const NODE_ID: &str = "1";
+    pub const LOG_LEVEL: u8 = super::log_level::INFO;
+}
+
+/// Validation range constants
+pub mod validation {
+    pub const PRIORITY_MIN: i32 = -1;
+    pub const PRIORITY_MAX: i32 = 99;
+    pub const PRIORITY_RT_MIN: i32 = 1;
+    pub const CPU_MIN: i32 = -1;
+    pub const CPU_MAX: i32 = 1024;
+    pub const PORT_MIN: u16 = 1;
+    pub const PORT_MAX: u16 = 65535;
+    pub const PORT_INVALID: u16 = 0;
+}
+
+/// Exit code constants
+pub mod exit_codes {
+    pub const SUCCESS: i32 = 0;
+    pub const FAILURE: i32 = 1;
+}
+
+/// Test constants for unit tests
+#[cfg(test)]
+pub mod test_values {
+    pub const TEST_CPU_AFFINITY: i32 = 2;
+    pub const TEST_CPU_ZERO: i32 = 0;
+    pub const TEST_CPU_ONE: i32 = 1;
+    pub const TEST_PRIORITY: i32 = 50;
+    pub const TEST_PRIORITY_LOW: i32 = 1;
+    pub const TEST_PRIORITY_MID: i32 = 10;
+    pub const TEST_NODE_ID: &str = "test-node";
+    pub const TEST_NODE_ID_SHORT: &str = "test";
+    pub const TEST_RESULT_VALUE: i32 = 42;
+    pub const LOG_LEVEL_RANGE_MAX: u8 = super::log_level::VERBOSE;
+}
+
 /// Log level enum matching tt_log_level_t from C
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(u8)]
 pub enum LogLevel {
-    Silent = 0,
-    Error = 1,
-    Warning = 2,
+    Silent = log_level::SILENT,
+    Error = log_level::ERROR,
+    Warning = log_level::WARNING,
     #[default]
-    Info = 3,
-    Debug = 4,
-    Verbose = 5,
+    Info = log_level::INFO,
+    Debug = log_level::DEBUG,
+    Verbose = log_level::VERBOSE,
 }
 
 impl LogLevel {
     /// Parse log level from integer
     pub fn from_u8(level: u8) -> Option<Self> {
         match level {
-            0 => Some(LogLevel::Silent),
-            1 => Some(LogLevel::Error),
-            2 => Some(LogLevel::Warning),
-            3 => Some(LogLevel::Info),
-            4 => Some(LogLevel::Debug),
-            5 => Some(LogLevel::Verbose),
+            log_level::SILENT => Some(LogLevel::Silent),
+            log_level::ERROR => Some(LogLevel::Error),
+            log_level::WARNING => Some(LogLevel::Warning),
+            log_level::INFO => Some(LogLevel::Info),
+            log_level::DEBUG => Some(LogLevel::Debug),
+            log_level::VERBOSE => Some(LogLevel::Verbose),
             _ => None,
         }
     }
@@ -58,10 +115,10 @@ pub enum ClockType {
 /// Configuration structure matching the C context.config
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// CPU affinity for time trigger (-1 for no affinity)
+    /// CPU affinity for time trigger (defaults::CPU_NO_AFFINITY for no affinity)
     pub cpu: i32,
 
-    /// RT priority (1-99, -1 for default)
+    /// RT priority (validation::PRIORITY_RT_MIN-validation::PRIORITY_MAX, defaults::PRIORITY_DEFAULT for default)
     pub prio: i32,
 
     /// Port to connect to
@@ -92,11 +149,11 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            cpu: -1,
-            prio: -1,
-            port: 7777,
-            addr: "127.0.0.1".to_string(),
-            node_id: "1".to_string(),
+            cpu: defaults::CPU_NO_AFFINITY,
+            prio: defaults::PRIORITY_DEFAULT,
+            port: defaults::PORT,
+            addr: defaults::ADDRESS.to_string(),
+            node_id: defaults::NODE_ID.to_string(),
             enable_sync: false,
             enable_plot: false,
             enable_apex: false,
@@ -109,7 +166,7 @@ impl Default for Config {
 /// Command-line arguments structure using clap
 #[derive(Parser, Debug)]
 #[command(name = "timpani-n")]
-#[command(about = "Timpani-N node scheduler", long_about = None)]
+#[command(about = "Timpani-N node executor", long_about = None)]
 pub struct CliArgs {
     /// CPU affinity for timetrigger
     #[arg(short = 'c', long, value_name = "CPU_NUM")]
@@ -120,15 +177,15 @@ pub struct CliArgs {
     pub prio: Option<i32>,
 
     /// Port to connect to
-    #[arg(short = 'p', long, value_name = "PORT", default_value = "7777")]
+    #[arg(short = 'p', long, value_name = "PORT", default_value_t = defaults::PORT)]
     pub port: u16,
 
     /// Node ID
-    #[arg(short = 'n', long, value_name = "NODE_ID", default_value = "1")]
+    #[arg(short = 'n', long, value_name = "NODE_ID", default_value = defaults::NODE_ID)]
     pub node_id: String,
 
     /// Log level (0=silent, 1=error, 2=warning, 3=info, 4=debug, 5=verbose)
-    #[arg(short = 'l', long, value_name = "LEVEL", default_value = "3")]
+    #[arg(short = 'l', long, value_name = "LEVEL", default_value_t = defaults::LOG_LEVEL)]
     pub log_level: u8,
 
     /// Enable timer synchronization across multiple nodes
@@ -197,22 +254,22 @@ impl Config {
     /// Validate configuration values
     pub fn validate(&self) -> TimpaniResult<()> {
         // Validate priority
-        if self.prio < -1 || self.prio > 99 {
+        if self.prio < validation::PRIORITY_MIN || self.prio > validation::PRIORITY_MAX {
             eprintln!(
-                "[ERROR] Invalid priority: {} (must be -1 or 1-99)",
-                self.prio
+                "[ERROR] Invalid priority: {} (must be {} or {}-{})",
+                self.prio, validation::PRIORITY_MIN, validation::PRIORITY_RT_MIN, validation::PRIORITY_MAX
             );
             return Err(TimpaniError::Config);
         }
 
-        // Port validation is already handled by u16 type (1-65535)
-        if self.port == 0 {
-            eprintln!("[ERROR] Invalid port: 0 (must be 1-65535)");
+        // Port validation is already handled by u16 type (validation::PORT_MIN-validation::PORT_MAX)
+        if self.port == validation::PORT_INVALID {
+            eprintln!("[ERROR] Invalid port: {} (must be {}-{})", validation::PORT_INVALID, validation::PORT_MIN, validation::PORT_MAX);
             return Err(TimpaniError::Config);
         }
 
         // Validate CPU
-        if self.cpu < -1 || self.cpu > 1024 {
+        if self.cpu < validation::CPU_MIN || self.cpu > validation::CPU_MAX {
             eprintln!("[ERROR] Invalid CPU number: {}", self.cpu);
             return Err(TimpaniError::Config);
         }
@@ -256,11 +313,11 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = Config::default();
-        assert_eq!(config.cpu, -1);
-        assert_eq!(config.prio, -1);
-        assert_eq!(config.port, 7777);
-        assert_eq!(config.addr, "127.0.0.1");
-        assert_eq!(config.node_id, "1");
+        assert_eq!(config.cpu, defaults::CPU_NO_AFFINITY);
+        assert_eq!(config.prio, defaults::PRIORITY_DEFAULT);
+        assert_eq!(config.port, defaults::PORT);
+        assert_eq!(config.addr, defaults::ADDRESS);
+        assert_eq!(config.node_id, defaults::NODE_ID);
         assert!(!config.enable_sync);
         assert!(!config.enable_plot);
         assert!(!config.enable_apex);
@@ -275,10 +332,10 @@ mod tests {
     #[test]
     fn test_validate_invalid_priority() {
         let mut config = Config::default();
-        config.prio = 100;
+        config.prio = validation::PRIORITY_MAX + 1; // 100 is invalid
         assert!(config.validate().is_err());
 
-        config.prio = -2;
+        config.prio = validation::PRIORITY_MIN - 1; // -2 is invalid
         assert!(config.validate().is_err());
     }
 

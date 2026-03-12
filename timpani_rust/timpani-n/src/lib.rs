@@ -81,9 +81,9 @@ mod tests {
     #[test]
     fn test_run_app_with_custom_config() {
         let mut config = Config::default();
-        config.cpu = 2;
-        config.prio = 50;
-        config.node_id = "test-node".to_string();
+        config.cpu = config::test_values::TEST_CPU_AFFINITY;
+        config.prio = config::test_values::TEST_PRIORITY;
+        config.node_id = config::test_values::TEST_NODE_ID.to_string();
         config.log_level = config::LogLevel::Debug;
 
         assert!(run_app(config).is_ok());
@@ -118,8 +118,8 @@ mod tests {
 
         // Test with various configurations
         let mut config = Config::default();
-        config.cpu = 0;
-        config.prio = 1;
+        config.cpu = config::test_values::TEST_CPU_ZERO;
+        config.prio = config::test_values::TEST_PRIORITY_LOW;
         assert!(run_app(config).is_ok());
 
         let mut config = Config::default();
@@ -186,12 +186,12 @@ mod tests {
             Config::default(),
             {
                 let mut c = Config::default();
-                c.cpu = 1;
+                c.cpu = config::test_values::TEST_CPU_ONE;
                 c
             },
             {
                 let mut c = Config::default();
-                c.prio = 10;
+                c.prio = config::test_values::TEST_PRIORITY_MID;
                 c
             },
             {
@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn test_init_logging_all_levels() {
         // Test all log levels
-        for level_num in 0..=5 {
+        for level_num in config::log_level::SILENT..=config::test_values::LOG_LEVEL_RANGE_MAX {
             let level = config::LogLevel::from_u8(level_num).unwrap();
             init_logging(level);
         }

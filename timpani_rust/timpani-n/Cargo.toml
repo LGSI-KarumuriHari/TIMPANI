@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["LG Electronics"]
 license = "MIT"
-description = "Timpani-N node scheduler – Rust port of the C implementation"
+description = "Timpani-N node executor – Rust port of the C implementation"
 
 [[bin]]
 name = "timpani-n"

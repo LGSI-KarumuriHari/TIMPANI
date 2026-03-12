@@ -140,9 +140,9 @@ mod tests {
     #[test]
     fn test_context_with_custom_config() {
         let mut config = Config::default();
-        config.cpu = 2;
-        config.prio = 50;
-        config.node_id = "test".to_string();
+        config.cpu = crate::config::test_values::TEST_CPU_AFFINITY;
+        config.prio = crate::config::test_values::TEST_PRIORITY;
+        config.node_id = crate::config::test_values::TEST_NODE_ID_SHORT.to_string();
 
         let mut ctx = Context::new(config);
         assert!(ctx.initialize().is_ok());

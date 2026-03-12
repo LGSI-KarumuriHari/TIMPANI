@@ -43,6 +43,7 @@ pub type TimpaniResult<T> = Result<T, TimpaniError>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config;
 
     #[test]
     fn test_error_display() {
@@ -75,9 +76,9 @@ mod tests {
 
     #[test]
     fn test_result_ok() {
-        let result: TimpaniResult<i32> = Ok(42);
+        let result: TimpaniResult<i32> = Ok(config::test_values::TEST_RESULT_VALUE);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        assert_eq!(result.unwrap(), config::test_values::TEST_RESULT_VALUE);
     }
 
     #[test]

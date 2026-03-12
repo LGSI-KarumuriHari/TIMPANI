@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-use timpani_n::{config::Config, init_logging, run_app};
+use timpani_n::{config::{Config, exit_codes}, init_logging, run_app};
 use tracing::error;
 
 fn main() -> anyhow::Result<()> {
@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
         Ok(config) => config,
         Err(e) => {
             eprintln!("Configuration error: {}", e);
-            std::process::exit(1);
+            std::process::exit(exit_codes::FAILURE);
         }
     };
 
@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     // Run the main application logic
     if let Err(e) = run_app(config) {
         error!("Application error: {}", e);
-        std::process::exit(1);
+        std::process::exit(exit_codes::FAILURE);
     }
 
     Ok(())
