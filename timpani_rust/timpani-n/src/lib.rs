@@ -344,7 +344,7 @@ mod run_app_tests {
 
             let response = NodeSchedResponse {
                 workload_id: "test-workload-001".to_string(),
-                hyperperiod_us: 1000_000,
+                hyperperiod_us: 1_000_000,
                 tasks: vec![ScheduledTask {
                     name: "test_task".to_string(),
                     sched_policy: 1,

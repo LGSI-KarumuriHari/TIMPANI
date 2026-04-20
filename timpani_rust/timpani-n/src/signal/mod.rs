@@ -84,8 +84,12 @@ mod tests {
         });
 
         // Wait for cancellation with timeout
-        let wait_result = tokio::time::timeout(Duration::from_secs(1), token_clone.cancelled()).await;
-        assert!(wait_result.is_ok(), "Token should be cancelled within timeout");
+        let wait_result =
+            tokio::time::timeout(Duration::from_secs(1), token_clone.cancelled()).await;
+        assert!(
+            wait_result.is_ok(),
+            "Token should be cancelled within timeout"
+        );
     }
 
     #[tokio::test]

@@ -307,7 +307,10 @@ mod tests {
         );
         // Accept Signal, Network, or Ok (lazy connection)
         assert!(
-            matches!(result, Err(TimpaniError::Signal | TimpaniError::Network) | Ok(_)),
+            matches!(
+                result,
+                Err(TimpaniError::Signal | TimpaniError::Network) | Ok(_)
+            ),
             "Expected Signal/Network error or Ok, got: {:?}",
             result
         );
@@ -330,15 +333,15 @@ mod tests {
     #[test]
     fn test_dmiss_queue_depth_constant() {
         // Verify the queue depth constant is reasonable
-        assert!(DMISS_QUEUE_DEPTH > 0);
-        assert!(DMISS_QUEUE_DEPTH <= 1024);
+        const { assert!(DMISS_QUEUE_DEPTH > 0) };
+        const { assert!(DMISS_QUEUE_DEPTH <= 1024) };
     }
 
     #[test]
     fn test_retry_interval_constant() {
         // Verify retry interval is reasonable
-        assert!(RETRY_INTERVAL_MS > 0);
-        assert!(RETRY_INTERVAL_MS <= 10_000);
+        const { assert!(RETRY_INTERVAL_MS > 0) };
+        const { assert!(RETRY_INTERVAL_MS <= 10_000) };
     }
 
     #[tokio::test]
@@ -373,7 +376,10 @@ mod tests {
 
         // Should fail immediately due to cancellation
         assert!(matches!(result, Err(TimpaniError::Signal)));
-        assert!(elapsed < Duration::from_secs(1), "Cancellation should be immediate");
+        assert!(
+            elapsed < Duration::from_secs(1),
+            "Cancellation should be immediate"
+        );
     }
 
     #[tokio::test]
@@ -401,11 +407,7 @@ mod tests {
     #[tokio::test]
     async fn test_connect_with_invalid_uri_formats() {
         // Test various invalid URI formats that should cause Config errors
-        let invalid_uris = vec![
-            "not a uri",
-            "",
-            "invalid format $$$",
-        ];
+        let invalid_uris = vec!["not a uri", "", "invalid format $$$"];
 
         for uri in invalid_uris {
             let cancel_clone = CancellationToken::new();
@@ -451,7 +453,7 @@ mod mock_server_tests {
 
             let response = NodeSchedResponse {
                 workload_id: "test-workload-001".to_string(),
-                hyperperiod_us: 1000_000,
+                hyperperiod_us: 1_000_000,
                 tasks: vec![
                     ScheduledTask {
                         name: "test_task_1".to_string(),
@@ -548,20 +550,16 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let mut client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel,
-        )
-        .await
-        .expect("should connect to mock server");
+        let mut client = NodeClient::connect(&format!("http://{}", addr), 3, cancel)
+            .await
+            .expect("should connect to mock server");
 
         let result = client.get_sched_info("test-node").await;
         assert!(result.is_ok());
 
         let response = result.unwrap();
         assert_eq!(response.workload_id, "test-workload-001");
-        assert_eq!(response.hyperperiod_us, 1000_000);
+        assert_eq!(response.hyperperiod_us, 1_000_000);
         assert_eq!(response.tasks.len(), 2);
         assert_eq!(response.tasks[0].name, "test_task_1");
         assert_eq!(response.tasks[1].name, "test_task_2");
@@ -573,13 +571,9 @@ mod mock_server_tests {
         let addr = start_mock_server(port, false, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let mut client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel,
-        )
-        .await
-        .expect("should connect to mock server");
+        let mut client = NodeClient::connect(&format!("http://{}", addr), 3, cancel)
+            .await
+            .expect("should connect to mock server");
 
         let result = client.get_sched_info("test-node").await;
         assert!(matches!(result, Err(TimpaniError::NotReady)));
@@ -591,13 +585,9 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, true).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let mut client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel,
-        )
-        .await
-        .expect("should connect to mock server");
+        let mut client = NodeClient::connect(&format!("http://{}", addr), 3, cancel)
+            .await
+            .expect("should connect to mock server");
 
         let result = client.sync_timer("test-node").await;
         assert!(result.is_ok());
@@ -614,13 +604,9 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let mut client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel,
-        )
-        .await
-        .expect("should connect to mock server");
+        let mut client = NodeClient::connect(&format!("http://{}", addr), 3, cancel)
+            .await
+            .expect("should connect to mock server");
 
         let result = client.sync_timer("test-node").await;
         assert!(matches!(result, Err(TimpaniError::Network)));
@@ -632,13 +618,9 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel.clone(),
-        )
-        .await
-        .expect("should connect to mock server");
+        let client = NodeClient::connect(&format!("http://{}", addr), 3, cancel.clone())
+            .await
+            .expect("should connect to mock server");
 
         // Report a deadline miss
         client.report_dmiss("test-node".to_string(), "test_task".to_string());
@@ -655,20 +637,13 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel.clone(),
-        )
-        .await
-        .expect("should connect to mock server");
+        let client = NodeClient::connect(&format!("http://{}", addr), 3, cancel.clone())
+            .await
+            .expect("should connect to mock server");
 
         // Try to overflow the queue (DMISS_QUEUE_DEPTH = 64)
         for i in 0..100 {
-            client.report_dmiss(
-                "test-node".to_string(),
-                format!("test_task_{}", i),
-            );
+            client.report_dmiss("test-node".to_string(), format!("test_task_{}", i));
         }
 
         // Wait for processing
@@ -683,13 +658,9 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel.clone(),
-        )
-        .await
-        .expect("should connect to mock server");
+        let client = NodeClient::connect(&format!("http://{}", addr), 3, cancel.clone())
+            .await
+            .expect("should connect to mock server");
 
         // Cancel the token to stop the reporter
         cancel.cancel();
@@ -710,13 +681,9 @@ mod mock_server_tests {
         let addr = start_mock_server(port, true, false).await.unwrap();
         let cancel = CancellationToken::new();
 
-        let mut client = NodeClient::connect(
-            &format!("http://{}", addr),
-            3,
-            cancel,
-        )
-        .await
-        .expect("should connect to mock server");
+        let mut client = NodeClient::connect(&format!("http://{}", addr), 3, cancel)
+            .await
+            .expect("should connect to mock server");
 
         // Call multiple times to ensure idempotency
         for _ in 0..3 {

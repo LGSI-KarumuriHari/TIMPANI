@@ -79,7 +79,7 @@ fn compile_bpf() -> Result<(), Box<dyn std::error::Error>> {
     if std::path::Path::new(&arch_include).exists() {
         builder = builder.clang_args([format!("-I{arch_include}")]);
     }
-    builder.build_and_generate(&out_dir.join("sigwait.skel.rs"))?;
+    builder.build_and_generate(out_dir.join("sigwait.skel.rs"))?;
 
     Ok(())
 }

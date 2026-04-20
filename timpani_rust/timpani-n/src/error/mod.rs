@@ -65,7 +65,10 @@ mod tests {
         assert_eq!(TimpaniError::InvalidArgs.to_string(), "Invalid arguments");
         assert_eq!(TimpaniError::Io.to_string(), "Input/Output error");
         assert_eq!(TimpaniError::Permission.to_string(), "Permission denied");
-        assert_eq!(TimpaniError::NotReady.to_string(), "Resource not ready \u{2014} retry");
+        assert_eq!(
+            TimpaniError::NotReady.to_string(),
+            "Resource not ready \u{2014} retry"
+        );
     }
 
     #[test]

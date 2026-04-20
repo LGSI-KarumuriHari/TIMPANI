@@ -408,7 +408,7 @@ mod tests {
     #[test]
     fn test_sched_policy_clone() {
         let policy = SchedPolicy::Rr;
-        let cloned = policy.clone();
+        let cloned = policy;
         assert_eq!(policy, cloned);
     }
 
@@ -421,8 +421,14 @@ mod tests {
 
     #[test]
     fn test_map_nix_err_permission() {
-        assert_eq!(map_nix_err(nix::errno::Errno::EPERM), TimpaniError::Permission);
-        assert_eq!(map_nix_err(nix::errno::Errno::EACCES), TimpaniError::Permission);
+        assert_eq!(
+            map_nix_err(nix::errno::Errno::EPERM),
+            TimpaniError::Permission
+        );
+        assert_eq!(
+            map_nix_err(nix::errno::Errno::EACCES),
+            TimpaniError::Permission
+        );
     }
 
     #[test]
@@ -573,8 +579,7 @@ mod tests {
         let pid = Pid::from_raw(std::process::id() as libc::pid_t);
         let result = create_pidfd(pid);
         // Should succeed on Linux >= 5.3 or fail gracefully
-        if result.is_ok() {
-            let pidfd = result.unwrap();
+        if let Ok(pidfd) = result {
             // pidfd should be a valid file descriptor
             assert!(pidfd.as_raw_fd() >= 0);
         }
