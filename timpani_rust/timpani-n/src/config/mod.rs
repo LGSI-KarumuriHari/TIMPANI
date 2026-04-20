@@ -29,6 +29,9 @@ pub mod defaults {
     pub const ADDRESS: &str = "127.0.0.1";
     pub const NODE_ID: &str = "1";
     pub const LOG_LEVEL: u8 = super::log_level::INFO;
+    /// Maximum connection retry attempts: 300 × 1 s interval = 5 minutes.
+    /// Matches C constant TT_MAX_CONNECTION_RETRIES = 300.
+    pub const MAX_RETRIES: u32 = 300;
 }
 
 /// Validation range constants
@@ -144,6 +147,11 @@ pub struct Config {
 
     /// Log level
     pub log_level: LogLevel,
+
+    /// Maximum connection retry attempts to Timpani-O.
+    /// D-N-004: configurable (not compile-time constant) for deployment
+    /// flexibility — staging nodes may need a shorter timeout than production.
+    pub max_retries: u32,
 }
 
 impl Default for Config {
@@ -159,6 +167,7 @@ impl Default for Config {
             enable_apex: false,
             clockid: ClockType::Realtime,
             log_level: LogLevel::Info,
+            max_retries: defaults::MAX_RETRIES,
         }
     }
 }
@@ -200,6 +209,11 @@ pub struct CliArgs {
     #[arg(short = 'a', long)]
     pub enable_apex: bool,
 
+    /// Maximum connection retry attempts to Timpani-O (one attempt per second).
+    /// Default 300 = 5 minutes — matches C TT_MAX_CONNECTION_RETRIES.
+    #[arg(long, value_name = "RETRIES", default_value_t = defaults::MAX_RETRIES)]
+    pub max_retries: u32,
+
     /// Server host address
     #[arg(value_name = "HOST")]
     pub host: Option<String>,
@@ -239,6 +253,9 @@ impl Config {
         config.enable_sync = args.enable_sync;
         config.enable_plot = args.enable_plot;
         config.enable_apex = args.enable_apex;
+
+        // Parse retry limit
+        config.max_retries = args.max_retries;
 
         // Parse host address
         if let Some(host) = args.host {
@@ -311,6 +328,7 @@ impl Config {
             "  Apex.OS test mode: {}",
             if self.enable_apex { "yes" } else { "no" }
         );
+        info!("  Max connection retries: {}", self.max_retries);
     }
 }
 
@@ -329,6 +347,7 @@ mod tests {
         assert!(!config.enable_sync);
         assert!(!config.enable_plot);
         assert!(!config.enable_apex);
+        assert_eq!(config.max_retries, defaults::MAX_RETRIES);
     }
 
     #[test]

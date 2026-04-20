@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright 2026 LG Electronics Inc.
+# SPDX-License-Identifier: MIT
+
 [package]
 name = "timpani-n"
 version = "0.1.0"
@@ -10,11 +13,27 @@ description = "Timpani-N node executor – Rust port of the C implementation"
 name = "timpani-n"
 path = "src/main.rs"
 
+# ── Feature flags ─────────────────────────────────────────────────────────────
+
+[features]
+# sigwait eBPF tracing — core mechanism for deadline-miss detection.
+# Default ON: matches C build default CONFIG_TRACE_BPF=ON.
+# Disable with: cargo build -p timpani-n --no-default-features
+default = ["bpf"]
+bpf     = ["dep:libbpf-rs", "dep:libbpf-cargo"]
+
+# schedstat eBPF event tracing → per-task .gpdata plot files.
+# Default OFF: matches C build default CONFIG_TRACE_BPF_EVENT=OFF.
+# Enabling this also enables "bpf" (plot requires bpf infrastructure).
+plot    = ["bpf"]
+
+# ── Runtime dependencies ──────────────────────────────────────────────────────
+
 [dependencies]
-# CLI argument parsing
+# CLI argument parsing — same as timpani-o
 clap = { version = "4", features = ["derive"] }
 
-# Structured, async-aware logging
+# Structured, async-aware logging — same as timpani-o
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
@@ -23,3 +42,76 @@ anyhow = "1"
 
 # Derive macros for structured error types
 thiserror = "1"
+
+# Async runtime — same version as timpani-o
+tokio = { version = "1", features = ["full"] }
+
+# gRPC framework — same version as timpani-o
+tonic = "0.12"
+prost = "0.13"
+
+# Safe POSIX wrappers for Linux scheduling + signal syscalls.
+#
+# Decision D-N-001: nix chosen over raw libc FFI because:
+#   - Returns typed Errno instead of raw -1/errno pairs — errors are
+#     impossible to accidentally ignore at the call site.
+#   - Linux-specific constraints are encoded in the type system
+#     (e.g. sched::Policy enum, Signal enum) — invalid values cannot
+#     be constructed, eliminating a whole class of mis-configuration bugs.
+#   - Memory-safe: no raw pointer passing to callers.
+#   - Covers all syscalls we need: sched_setaffinity (sched),
+#     sched_setscheduler (sched), kill/pidfd_send_signal (signal),
+#     pidfd_open (process).
+#
+# libc is kept alongside nix for SIGRTMIN() — a dynamic value returned
+# by __libc_current_sigrtmin() that nix does not expose as a constant.
+# It is also already present transitively in the workspace lock (0.2.182).
+nix  = { version = "0.29", features = ["sched", "signal", "process"] }
+libc = "0.2"
+
+# /proc filesystem scanning to find task PIDs by process name.
+#
+# Decision D-N-002: procfs chosen over manual /proc parsing because:
+#   - Handles TOCTOU races (process may disappear mid-scan) gracefully.
+#   - Provides strongly-typed structs for /proc/<PID>/stat and
+#     /proc/<PID>/status — no brittle string splits.
+#   - procfs::process::all_processes() is a lazy iterator; memory-efficient
+#     when scanning a large process table on a busy node.
+procfs = "0.17"
+
+# CancellationToken for structured shutdown propagation.
+# Used to signal all async worker tasks (timer loops, BPF poll thread,
+# watchdog) to stop cleanly on SIGINT/SIGTERM.
+# Already present transitively in the workspace lock (0.7.18).
+tokio-util = { version = "0.7", features = ["rt"] }
+
+# BPF skeleton runtime — only compiled when feature "bpf" is enabled.
+#
+# Decision D-N-003: libbpf-rs chosen because:
+#   - Official Rust binding for the libbpf C library, maintained by
+#     the same team (kernel BPF maintainers).
+#   - libbpf-cargo generates type-safe Rust skeletons from .bpf.c at
+#     build time — same concept as bpftool skeleton, but integrated into
+#     cargo build.
+#   - libbpf-rs bundles its own libbpf via libbpf-sys; the git submodule
+#     at /libbpf is used only by the C CMake build — no version conflict.
+libbpf-rs = { version = "0.24", optional = true }
+
+# ── Build-time dependencies ───────────────────────────────────────────────────
+
+[build-dependencies]
+# Protobuf → tonic client stubs (matches timpani-o version exactly)
+tonic-build = "0.12"
+
+# BPF .bpf.c → Rust skeleton generation — only when feature "bpf" is on.
+# Requires clang on PATH at build time.
+# Ubuntu/Debian: sudo apt install -y clang
+libbpf-cargo = { version = "0.24", optional = true }
+
+# ── Test dependencies ─────────────────────────────────────────────────────────
+
+[dev-dependencies]
+# For creating mock gRPC servers in tests
+tower = "0.4"
+hyper = "1"
+http = "1"
