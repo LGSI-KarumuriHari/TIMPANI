@@ -264,6 +264,16 @@ mod tests {
         assert_eq!(cfg.architecture, "aarch64");
         assert_eq!(cfg.location, "default_location");
         assert!(!cfg.description.is_empty());
+
+        // Additional coverage for custom node names and edge cases
+        let custom_name = "custom_node";
+        let cfg2 = NodeConfig::default_config(custom_name);
+        assert_eq!(cfg2.name, custom_name);
+        assert_eq!(cfg2.available_cpus, vec![0, 1, 2, 3]);
+        assert_eq!(cfg2.max_memory_mb, 4096);
+        assert_eq!(cfg2.architecture, "aarch64");
+        assert_eq!(cfg2.location, "default_location");
+        assert_eq!(cfg2.description, "Default node configuration");
     }
 
     #[test]
