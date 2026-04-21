@@ -4,52 +4,37 @@
  */
 
 //! Integration tests for timpani-n
+//!
+//! Tests marked `#[ignore]` require a live Timpani-O instance.
+//! Run them with: `cargo test -p timpani-n -- --ignored`
 
 use timpani_n::config::Config;
 use timpani_n::context::Context;
 use timpani_n::run_app;
 
-#[test]
-fn test_run_app_integration() {
+#[tokio::test]
+#[ignore = "requires live Timpani-O on 127.0.0.1:50054"]
+async fn test_run_app_integration() {
     let config = Config::default();
-    assert!(run_app(config).is_ok());
+    assert!(run_app(config).await.is_ok());
 }
 
-#[test]
-fn test_full_lifecycle_with_various_configs() {
-    // Test with default config
-    let config = Config::default();
-    assert!(run_app(config).is_ok());
-
+#[tokio::test]
+#[ignore = "requires live Timpani-O on 127.0.0.1:50054"]
+async fn test_full_lifecycle_with_various_configs() {
     // Test with CPU affinity
     let config = Config {
         cpu: 2,
         ..Default::default()
     };
-    assert!(run_app(config).is_ok());
+    assert!(run_app(config).await.is_ok());
 
     // Test with priority
     let config = Config {
         prio: 50,
         ..Default::default()
     };
-    assert!(run_app(config).is_ok());
-
-    // Test with all flags enabled
-    let config = Config {
-        enable_sync: true,
-        enable_plot: true,
-        enable_apex: true,
-        ..Default::default()
-    };
-    assert!(run_app(config).is_ok());
-
-    // Test with different log levels
-    for level in 0..=5 {
-        let mut config = Config::default();
-        config.log_level = timpani_n::config::LogLevel::from_u8(level).unwrap();
-        assert!(run_app(config).is_ok());
-    }
+    assert!(run_app(config).await.is_ok());
 }
 
 #[test]

@@ -35,6 +35,12 @@ pub enum TimpaniError {
 
     #[error("Permission denied")]
     Permission,
+
+    /// Server is reachable but the requested resource is not ready yet.
+    /// Caller should retry after a delay.  Maps to gRPC NOT_FOUND when
+    /// Timpani-O has no workload scheduled yet.
+    #[error("Resource not ready — retry")]
+    NotReady,
 }
 
 /// Result type alias for Timpani operations
@@ -59,6 +65,10 @@ mod tests {
         assert_eq!(TimpaniError::InvalidArgs.to_string(), "Invalid arguments");
         assert_eq!(TimpaniError::Io.to_string(), "Input/Output error");
         assert_eq!(TimpaniError::Permission.to_string(), "Permission denied");
+        assert_eq!(
+            TimpaniError::NotReady.to_string(),
+            "Resource not ready \u{2014} retry"
+        );
     }
 
     #[test]
@@ -98,6 +108,7 @@ mod tests {
             TimpaniError::InvalidArgs,
             TimpaniError::Io,
             TimpaniError::Permission,
+            TimpaniError::NotReady,
         ];
 
         for error in &errors {

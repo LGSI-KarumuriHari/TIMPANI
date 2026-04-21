@@ -4,6 +4,31 @@
  */
 
 use crate::config::Config;
+use crate::grpc::NodeClient;
+
+/// Scheduling information received from Timpani-O at startup via GetSchedInfo.
+///
+/// This is a domain type (no proto dependency).  The full task list lives here
+/// temporarily until the task module is implemented and owns it.
+#[derive(Debug)]
+pub struct SchedInfo {
+    /// Workload identifier string from Timpani-O.
+    pub workload_id: String,
+    /// Hyperperiod in microseconds.
+    pub hyperperiod_us: u64,
+    /// Number of tasks assigned to this node.
+    pub task_count: usize,
+}
+
+/// Absolute start time returned by SyncTimer when the barrier releases.
+///
+/// Expressed as a CLOCK_REALTIME value — the timer module uses this to
+/// calculate when each task's first deadline fires.
+#[derive(Debug, Clone, Copy)]
+pub struct SyncStartTime {
+    pub sec: i64,
+    pub nsec: i32,
+}
 
 /// Runtime state structure
 /// Maps to context.runtime from C implementation
@@ -11,20 +36,22 @@ use crate::config::Config;
 pub struct RuntimeState {
     /// Shutdown request flag
     pub shutdown_requested: bool,
+    /// Schedule received from Timpani-O at startup.  None until GetSchedInfo succeeds.
+    pub sched_info: Option<SchedInfo>,
+    /// Barrier start time from SyncTimer.  None if enable_sync=false or sync not yet done.
+    pub sync_start: Option<SyncStartTime>,
     // TODO: Add fields as we port more modules:
-    // - tt_list (time trigger task list)
-    // - sched_info (scheduling information)
-    // - starttimer_ts (start timer timestamp)
-    // - apex_list (Apex.OS task list)
+    // - tt_list (time trigger task list — task module)
+    // - apex_list (Apex.OS task list — apex module)
 }
 
 /// Communication state structure
 /// Maps to context.comm from C implementation
 #[derive(Debug, Default)]
 pub struct CommState {
+    /// Live gRPC connection to Timpani-O.  None until NodeClient::connect succeeds.
+    pub node_client: Option<NodeClient>,
     // TODO: Add fields as we port more modules:
-    // - event (systemd event loop)
-    // - dbus (D-Bus connection)
     // - apex_fd (Apex.OS Monitor Socket FD)
 }
 

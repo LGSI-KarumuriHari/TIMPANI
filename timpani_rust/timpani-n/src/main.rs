@@ -9,7 +9,9 @@ use timpani_n::{
 };
 use tracing::error;
 
-fn main() -> anyhow::Result<()> {
+// tokio::main provides the async executor required by tonic (gRPC).
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     // Parse configuration from command-line arguments
     let config = match Config::from_args() {
         Ok(config) => config,
@@ -23,7 +25,7 @@ fn main() -> anyhow::Result<()> {
     init_logging(config.log_level);
 
     // Run the main application logic
-    if let Err(e) = run_app(config) {
+    if let Err(e) = run_app(config).await {
         error!("Application error: {}", e);
         std::process::exit(exit_codes::FAILURE);
     }

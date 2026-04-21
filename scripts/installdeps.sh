@@ -22,6 +22,11 @@ common_packages=(
   nodejs
   jq
   npm
+  # BPF development dependencies for libbpf-sys
+  libelf-dev
+  zlib1g-dev
+  clang
+  llvm
 )
 DEBIAN_FRONTEND=noninteractive sudo apt-get install -y "${common_packages[@]}"
 echo "✅ Base packages installed successfully"
