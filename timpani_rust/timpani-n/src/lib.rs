@@ -61,10 +61,10 @@ pub fn run(_ctx: &mut Context) -> TimpaniResult<()> {
 ///
 /// Sequence:
 ///   1. Signal handlers   → CancellationToken
-///   2. Connect to Timpani-O (with retry)
-///   3. GetSchedInfo       → populate ctx.runtime.sched_info
-///   4. SyncTimer          → populate ctx.runtime.sync_start   (if enable_sync)
-///   5. Initialize context (sched/BPF setup — future work)
+///   2. Initialize context (set CPU affinity, RT priority)
+///   3. Connect to Timpani-O (with retry)
+///   4. GetSchedInfo       → populate ctx.runtime.sched_info
+///   5. SyncTimer          → populate ctx.runtime.sync_start   (if enable_sync)
 ///   6. RT wait loop       → waits for SIGINT/SIGTERM; timer loop fills this later
 pub async fn run_app(config: Config) -> TimpaniResult<()> {
     config.log_config();
@@ -72,23 +72,30 @@ pub async fn run_app(config: Config) -> TimpaniResult<()> {
     // 1. Install signal handlers before any async ops so cancellation is live.
     let cancel = signal::setup_shutdown_handlers()?;
 
-    // 2. Connect to Timpani-O.
-    let addr = format!("http://{}:{}", config.addr, config.port);
-    info!(addr = %addr, "Connecting to Timpani-O");
-    let mut client = grpc::NodeClient::connect(&addr, config.max_retries, cancel.clone()).await?;
+    // 2. Initialize context and apply CPU affinity + RT scheduling policy EARLY.
+    //    This must happen before network operations to ensure the process runs
+    //    on the correct CPU with the correct priority.
+    let mut ctx = Context::new(config.clone());
+    ctx.initialize()?;
 
-    // 3. GetSchedInfo — retry until a workload is available or we give up.
+    // 3. Connect to Timpani-O.
+    let addr = format!("http://{}:{}", ctx.config.addr, ctx.config.port);
+    info!(addr = %addr, "Connecting to Timpani-O");
+    let mut client =
+        grpc::NodeClient::connect(&addr, ctx.config.max_retries, cancel.clone()).await?;
+
+    // 4. GetSchedInfo — retry until a workload is available or we give up.
     //    NOT_FOUND means Timpani-O is alive but no workload has been submitted
     //    yet.  This is expected and mirrors the C init_trpc() retry loop.
     let sched_resp = {
         let mut attempt = 0u32;
         loop {
-            match client.get_sched_info(&config.node_id).await {
+            match client.get_sched_info(&ctx.config.node_id).await {
                 Ok(resp) => break resp,
                 Err(TimpaniError::NotReady) => {
-                    if attempt >= config.max_retries {
+                    if attempt >= ctx.config.max_retries {
                         error!(
-                            attempts = config.max_retries + 1,
+                            attempts = ctx.config.max_retries + 1,
                             "No workload scheduled after max retries — giving up"
                         );
                         return Err(TimpaniError::Network);
@@ -96,7 +103,7 @@ pub async fn run_app(config: Config) -> TimpaniResult<()> {
                     attempt += 1;
                     info!(
                         attempt,
-                        max = config.max_retries + 1,
+                        max = ctx.config.max_retries + 1,
                         "No workload scheduled yet — retrying in 1s"
                     );
                     tokio::select! {
@@ -137,10 +144,10 @@ pub async fn run_app(config: Config) -> TimpaniResult<()> {
         task_count,
     };
 
-    // 4. SyncTimer — barrier across all active nodes (skipped if enable_sync=false).
-    let sync_start = if config.enable_sync {
+    // 5. SyncTimer — barrier across all active nodes (skipped if enable_sync=false).
+    let sync_start = if ctx.config.enable_sync {
         info!("SyncTimer: waiting for all nodes in workload to check in");
-        let sync_resp = client.sync_timer(&config.node_id).await?;
+        let sync_resp = client.sync_timer(&ctx.config.node_id).await?;
         if !sync_resp.ack {
             error!("SyncTimer returned ack=false — barrier failed or timed out");
             return Err(TimpaniError::Network);
@@ -158,14 +165,12 @@ pub async fn run_app(config: Config) -> TimpaniResult<()> {
         None
     };
 
-    // 5. Populate context and run any sync initialization (BPF, sched attrs — future).
-    let mut ctx = Context::new(config);
+    // 6. Populate runtime state with schedule and sync information.
     ctx.runtime.sched_info = Some(sched_info);
     ctx.runtime.sync_start = sync_start;
     ctx.comm.node_client = Some(client);
-    ctx.initialize()?;
 
-    // 6. RT wait loop.  The timer/task module will replace this with the
+    // 7. RT wait loop.  The timer/task module will replace this with the
     //    real deadline-driven loop; ReportDMiss will be called from there.
     info!("Startup complete — waiting for shutdown signal (RT loop not yet implemented)");
     cancel.cancelled().await;
@@ -269,7 +274,7 @@ mod tests {
     fn test_run_and_initialize_combinations() {
         // Test various initialization and run combinations
         let configs = vec![
-            Config::default(),
+            Config::default(), // cpu=-1, prio=-1 (should always work)
             Config {
                 cpu: config::test_values::TEST_CPU_ONE,
                 ..Default::default()
@@ -287,8 +292,14 @@ mod tests {
         ];
 
         for config in configs {
-            let mut ctx = Context::new(config);
-            assert!(initialize(&mut ctx).is_ok());
+            let mut ctx = Context::new(config.clone());
+            // Initialize may fail due to permissions (CAP_SYS_NICE), accept that
+            let init_result = initialize(&mut ctx);
+            match init_result {
+                Ok(_) => {}                                // Success with privileges
+                Err(error::TimpaniError::Permission) => {} // Expected without privileges
+                Err(e) => panic!("Unexpected error for config {:?}: {:?}", config, e),
+            }
             assert!(run(&mut ctx).is_ok());
             ctx.cleanup();
         }
