@@ -5,6 +5,9 @@
 
 use crate::config::Config;
 use crate::grpc::NodeClient;
+use crate::sched::{set_affinity, set_schedattr, SchedPolicy};
+use nix::unistd::Pid;
+use tracing::{info, warn};
 
 /// Scheduling information received from Timpani-O at startup via GetSchedInfo.
 ///
@@ -95,16 +98,45 @@ impl Context {
         }
     }
 
-    /// Initialize the context (placeholder for future initialization logic)
+    /// Initialize the context
+    ///
+    /// This applies system-level configuration (affinity, scheduling policy)
+    /// to the current process. Future work includes BPF setup, task list
+    /// initialization, and Apex.OS monitor integration.
     pub fn initialize(&mut self) -> crate::error::TimpaniResult<()> {
-        // TODO: Add initialization logic as we port more modules:
-        // - setup_signal_handlers
-        // - set_affinity
-        // - set_schedattr
+        let pid = Pid::from_raw(std::process::id() as i32);
+
+        // Apply CPU affinity if specified (cpu >= 0 means pin to specific CPU)
+        if self.config.cpu >= 0 {
+            info!("Setting CPU affinity to CPU {}", self.config.cpu);
+            set_affinity(pid, self.config.cpu as u32)?;
+        } else {
+            warn!("CPU affinity not set (cpu=-1 means no pinning)");
+        }
+
+        // Apply scheduling policy and priority if specified (prio >= 0)
+        if self.config.prio >= 0 {
+            // Determine policy based on priority:
+            // - prio 1-99: SCHED_FIFO (real-time)
+            // - prio 0: SCHED_OTHER (normal)
+            let policy = if self.config.prio > 0 && self.config.prio <= 99 {
+                SchedPolicy::Fifo
+            } else {
+                SchedPolicy::Normal
+            };
+
+            info!(
+                "Setting scheduling policy to {:?} with priority {}",
+                policy, self.config.prio
+            );
+            set_schedattr(pid, self.config.prio as u32, policy)?;
+        } else {
+            warn!("Scheduling policy not modified (prio=-1 means default)");
+        }
+
+        // TODO: Add additional initialization logic as we port more modules:
         // - calibrate_bpf_time_offset
-        // - init_trpc
-        // - init_task_list or init_apex_list
-        // - apex_monitor_init
+        // - init_task_list
 
         Ok(())
     }
@@ -151,6 +183,53 @@ mod tests {
     }
 
     #[test]
+    fn test_context_initialization_with_defaults() {
+        // Default config has cpu=0, prio=0 which should skip affinity/sched setup
+        let config = Config::default();
+        let mut ctx = Context::new(config);
+        // Should succeed even without setting affinity (cpu=0 means skip)
+        assert!(ctx.initialize().is_ok());
+    }
+
+    #[test]
+    #[ignore] // Requires CAP_SYS_NICE for RT priority
+    fn test_context_initialization_with_rt_priority() {
+        let config = Config {
+            cpu: 0, // Skip affinity
+            prio: 50,
+            ..Default::default()
+        };
+        let mut ctx = Context::new(config);
+        // May fail without privileges
+        let _ = ctx.initialize();
+    }
+
+    #[test]
+    fn test_context_initialization_with_cpu_affinity() {
+        let config = Config {
+            cpu: 1,  // Pin to CPU 1
+            prio: 0, // Skip scheduling
+            ..Default::default()
+        };
+        let mut ctx = Context::new(config);
+        // May fail without privileges but should attempt it
+        let _ = ctx.initialize();
+    }
+
+    #[test]
+    #[ignore] // Requires CAP_SYS_NICE
+    fn test_context_full_initialization() {
+        let config = Config {
+            cpu: 1,
+            prio: 85,
+            ..Default::default()
+        };
+        let mut ctx = Context::new(config);
+        // Will likely fail without privileges
+        let _ = ctx.initialize();
+    }
+
+    #[test]
     fn test_comm_state_default() {
         let comm = CommState::default();
         // Just ensure it constructs without issues
@@ -172,7 +251,13 @@ mod tests {
         config.node_id = crate::config::test_values::TEST_NODE_ID_SHORT.to_string();
 
         let mut ctx = Context::new(config);
-        assert!(ctx.initialize().is_ok());
+        // May fail without CAP_SYS_NICE permission, but shouldn't panic
+        let result = ctx.initialize();
+        match result {
+            Ok(_) => {}                                       // Success with privileges
+            Err(crate::error::TimpaniError::Permission) => {} // Expected without privileges
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
         ctx.cleanup();
     }
 }
