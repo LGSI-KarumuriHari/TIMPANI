@@ -1,0 +1,12 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: Copyright 2026 LG Electronics Inc.
+# SPDX-License-Identifier: MIT
+#
+# Pre-removal script for timpani-n (.deb / .rpm)
+set -e
+
+echo "Stopping and disabling timpani-n service..."
+systemctl stop timpani-n.service || true
+systemctl disable timpani-n.service || true
+
+exit 0

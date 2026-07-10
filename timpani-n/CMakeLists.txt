@@ -103,6 +103,54 @@ target_include_directories(timpani-n
 )
 
 install(TARGETS timpani-n DESTINATION bin)
+
+# libtrpc is pulled in via add_subdirectory(... EXCLUDE_FROM_ALL), so its own
+# install(TARGETS trpc ...) rule is NOT run by CPack/make install. timpani-n
+# links against it as a shared library (libtrpc.so.<SOVERSION>), so it must be
+# installed alongside the binary or the package fails at runtime with
+# "error while loading shared libraries: libtrpc.so.2: cannot open shared object file".
+install(TARGETS trpc LIBRARY DESTINATION lib)
 add_executable(exprocs EXCLUDE_FROM_ALL test/exprocs.c)
 
+install(FILES systemd/timpani-n.service
+    DESTINATION lib/systemd/system
+)
+
+# User-editable arguments file for the systemd service (see EnvironmentFile=
+# in timpani-n.service). Declared as a Debian "conffile" below so dpkg
+# preserves local edits across package upgrades instead of overwriting them.
+install(FILES pkg/timpani-n.default
+    DESTINATION /etc/default
+    RENAME timpani-n
+)
+
+# ---------------------------------------------------------------------------
+# Packaging (.deb / .rpm) — timpani-n is released as a native package because
+# it needs direct root/eBPF/scheduler access and cannot run reliably inside a
+# container.
+# ---------------------------------------------------------------------------
+set(CPACK_PACKAGE_NAME "timpani-n")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_CONTACT "Timpani Developers")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Timpani-N real-time scheduler")
+set(CPACK_GENERATOR "DEB;RPM")
+
+# .deb (Ubuntu) specific settings
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Timpani Developers")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsystemd0, libelf1, zlib1g")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_SOURCE_DIR}/pkg/postinst"
+    "${CMAKE_SOURCE_DIR}/pkg/prerm"
+    "${CMAKE_SOURCE_DIR}/pkg/conffiles"
+)
+
+# .rpm (CentOS) specific settings
+set(CPACK_RPM_PACKAGE_REQUIRES "systemd-libs, elfutils-libelf, zlib")
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/pkg/postinst")
+set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/pkg/prerm")
+# Mark the arguments file as a config file so rpm preserves local edits
+# across package upgrades (equivalent to the .deb conffiles entry above).
+set(CPACK_RPM_USER_FILELIST "%config(noreplace) /etc/default/timpani-n")
+
 include(CPack)
+

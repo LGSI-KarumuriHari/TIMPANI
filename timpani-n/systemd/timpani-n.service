@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright 2026 LG Electronics Inc.
+# SPDX-License-Identifier: MIT
+
+[Unit]
+Description=Timpani-N Real-Time Scheduler
+Documentation=https://github.com/MCO-PICCOLO/TIMPANI
+After=local-fs.target
+
+[Service]
+Type=simple
+# timpani-n needs root privileges for eBPF, real-time scheduling (sched_setattr)
+# and ftrace access — it cannot operate correctly in a rootless/limited container.
+User=root
+# Customize command-line arguments in /etc/default/timpani-n (TIMPANI_N_ARGS).
+# The "-" prefix makes the file optional, so the service still starts with
+# defaults if it's missing.
+EnvironmentFile=-/etc/default/timpani-n
+ExecStart=/usr/bin/timpani-n $TIMPANI_N_ARGS
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

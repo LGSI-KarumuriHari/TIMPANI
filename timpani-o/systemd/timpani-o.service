@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright 2026 LG Electronics Inc.
+# SPDX-License-Identifier: MIT
+
+[Unit]
+Description=Timpani-O Global Scheduler
+Documentation=https://github.com/MCO-PICCOLO/TIMPANI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/podman rm -f timpani-o
+ExecStart=/usr/bin/podman run \
+    --rm \
+    --name timpani-o \
+    --publish 50052:50052 \
+    --publish 7777:7777 \
+    --volume /etc/timpani-o/node_configurations.yaml:/timpani-o/examples/node_configurations.yaml:ro \
+    timpani-o:0.1.0
+ExecStop=/usr/bin/podman stop timpani-o
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
