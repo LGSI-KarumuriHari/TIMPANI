@@ -95,7 +95,30 @@ cargo test  # Run tests
 ```
 *For detailed setup and current development status → [Full Documentation](timpani_rust/timpani-o/README.md)*
 
-## 📄 License
+## � Prebuilt Release Artifacts (sdv_blueprint)
+
+The [`sdv_blueprint/`](sdv_blueprint/README.md) folder contains ready-to-use, pre-built
+release artifacts for `timpani-n` and `timpani-o`, plus `build.sh`/`install.sh` to
+build and install both in one step.
+
+- **`timpani-n-2.0.0-Linux.deb`** — native Debian/Ubuntu package. Install directly with:
+  ```bash
+  sudo dpkg -i sdv_blueprint/timpani-n-2.0.0-Linux.deb
+  ```
+  This installs the `timpani-n` binary and registers/starts it as a systemd service
+  (`timpani-n.service`) running as root, since it needs direct eBPF/scheduler access
+  to the host kernel.
+
+- **`timpani-o-0.1.0.tar`** — a Podman/Docker container image archive. Load and run it with:
+  ```bash
+  podman load -i sdv_blueprint/timpani-o-0.1.0.tar
+  podman run -d --name timpani-o -p 50052:50052 -p 7777:7777 timpani-o:0.1.0
+  ```
+
+*For the full build/install/verify/uninstall workflow, expected command output, and
+known issues → [`sdv_blueprint/README.md`](sdv_blueprint/README.md)*
+
+## �📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
@@ -106,6 +129,12 @@ TIMPANI/
 ├── README.md                    # This file - main project overview
 ├── sample-apps/
 │   ├── README.md               # Sample applications documentation
+├── sdv_blueprint/
+│   ├── README.md               # Prebuilt release artifacts: build/install/verify guide
+│   ├── timpani-n-2.0.0-Linux.deb  # Prebuilt timpani-n package
+│   ├── timpani-o-0.1.0.tar     # Prebuilt timpani-o container image (alpine-based, ~29MB)
+│   ├── build.sh                # Build both components from source
+│   └── install.sh              # One-step install (timpani-n + timpani-o)
 ├── timpani-n/
 │   ├── README.md               # C implementation: Node executor
 │   ├── README.CentOS.md       # CentOS setup guide

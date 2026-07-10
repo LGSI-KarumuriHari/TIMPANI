@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Copyright 2026 LG Electronics Inc.
+# SPDX-License-Identifier: MIT
+#
+# Environment file for the timpani-n systemd service (/etc/default/timpani-n).
+# Set TIMPANI_N_ARGS to customize the command-line arguments passed to the
+# timpani-n binary, then run:
+#   sudo systemctl restart timpani-n
+#
+# Available options (see `timpani-n -h`):
+#   -c <cpu_num>   CPU affinity for timetrigger
+#   -P <prio>      RT priority (1~99) for timetrigger
+#   -p <port>      Port to connect to (default: 7777)
+#   -n <node id>   Node ID (default: 1)
+#   -l <level>     Log level (0=silent, 1=error, 2=warning, 3=info, 4=debug, 5=verbose)
+#   -s             Enable timer synchronization across multiple nodes
+#   -g             Enable saving plot data file by using BPF (<node id>.gpdata)
+#   -a             Enable Apex.OS test mode which works without TT schedule info
+#   [host]         Positional argument: host address to connect to (default: 127.0.0.1)
+#
+# Example:
+# TIMPANI_N_ARGS="-p 7777 -n 2 -l 4 192.168.1.10"
+
+TIMPANI_N_ARGS=""
